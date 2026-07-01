@@ -1,11 +1,12 @@
 import React, { useState } from "react";
-import { Booking, ROOMS } from "../types";
+import { Booking, ROOMS, Room } from "../types";
 import { ChevronLeft, ChevronRight, Calendar, Info, Clock, CheckCircle } from "lucide-react";
 
 interface CalendarViewProps {
   bookings: Booking[];
   onDateSelect?: (date: string) => void;
   selectedDate?: string;
+  rooms?: Room[];
 }
 
 const THAI_MONTHS = [
@@ -15,7 +16,8 @@ const THAI_MONTHS = [
 
 const THAI_WEEKDAYS = ["จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส.", "อา."];
 
-export default function CalendarView({ bookings, onDateSelect, selectedDate }: CalendarViewProps) {
+export default function CalendarView({ bookings, onDateSelect, selectedDate, rooms }: CalendarViewProps) {
+  const displayRooms = rooms ?? ROOMS;
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedBookingDetails, setSelectedBookingDetails] = useState<Booking | null>(null);
 
@@ -100,8 +102,8 @@ export default function CalendarView({ bookings, onDateSelect, selectedDate }: C
   };
 
   const getRoomColorBadge = (roomName: string) => {
-    const room = ROOMS.find(r => r.name === roomName);
-    return room ? room.color : "bg-slate-500";
+    const room = displayRooms.find(r => r.name === roomName);
+    return room ? (room.color || "bg-indigo-500") : "bg-slate-500";
   };
 
   return (
@@ -227,9 +229,9 @@ export default function CalendarView({ bookings, onDateSelect, selectedDate }: C
       <div className="mt-4 flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100 text-xs text-brand-neutral">
         <div className="flex flex-wrap items-center gap-4">
           <span className="font-semibold">สัญลักษณ์ห้อง:</span>
-          {ROOMS.map((room) => (
+          {displayRooms.map((room) => (
             <div key={room.id} className="flex items-center gap-1.5">
-              <span className={`w-3 h-3 rounded-full ${room.color}`} />
+              <span className={`w-3 h-3 rounded-full ${room.color || "bg-indigo-500"}`} />
               <span>{room.name}</span>
             </div>
           ))}

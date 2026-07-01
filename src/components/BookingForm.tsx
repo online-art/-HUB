@@ -1,28 +1,48 @@
 import React, { useState, useEffect } from "react";
-import { DEPARTMENTS, ROOMS, Booking } from "../types";
-import { User, Layers, Calendar, Clock, BookOpen, MonitorPlay, Users, CheckSquare, Sparkles } from "lucide-react";
+import { DEPARTMENTS, ROOMS, Booking, Room } from "../types";
+import { User, Layers, Calendar, Clock, BookOpen, MonitorPlay, Users, CheckSquare, Sparkles, Image as ImageIcon } from "lucide-react";
+
+export function getRoomImageSrc(imageUrl?: string) {
+  if (!imageUrl) return "";
+  const url = imageUrl.trim();
+  const driveMatch = url.match(/(?:drive\.google\.com\/file\/d\/|open\?id=)([^/?#\s]+)/);
+  if (driveMatch && driveMatch[1]) {
+    return `https://lh3.googleusercontent.com/d/${driveMatch[1]}`;
+  }
+  return url;
+}
 
 interface BookingFormProps {
   userEmail: string | null;
   onLoginClick: () => void;
   onSubmitBooking: (bookingData: Omit<Booking, "id" | "status" | "userEmail" | "createdAt">) => Promise<boolean>;
   selectedCalendarDate?: string;
+  rooms?: Room[];
 }
 
-export default function BookingForm({ userEmail, onLoginClick, onSubmitBooking, selectedCalendarDate }: BookingFormProps) {
+export default function BookingForm({ userEmail, onLoginClick, onSubmitBooking, selectedCalendarDate, rooms }: BookingFormProps) {
+  const displayRooms = rooms ?? ROOMS;
   const [fullName, setFullName] = useState("");
-  const [department, setDepartment] = useState("");
+  const [selectedDept, setSelectedDept] = useState("");
+  const [customDept, setCustomDept] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("12:00");
-  const [selectedRoom, setSelectedRoom] = useState("ห้อง Resource Center");
+  const [selectedRoom, setSelectedRoom] = useState("");
   const [purpose, setPurpose] = useState("");
   const [attendeesCount, setAttendeesCount] = useState(1);
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+
+  // Set initial selected room based on available rooms
+  useEffect(() => {
+    if (displayRooms.length > 0 && !selectedRoom) {
+      setSelectedRoom(displayRooms[0].name);
+    }
+  }, [displayRooms, selectedRoom]);
 
   // Sync calendar date selection with form
   useEffect(() => {
@@ -48,8 +68,10 @@ export default function BookingForm({ userEmail, onLoginClick, onSubmitBooking, 
       return;
     }
 
-    if (!department) {
-      setErrorMsg("กรุณาเลือกกลุ่มสาระฯ/งาน");
+    const finalDepartment = selectedDept === "อื่น ๆ (โปรดระบุ)" ? customDept.trim() : selectedDept;
+
+    if (!finalDepartment) {
+      setErrorMsg("กรุณาเลือกหรือระบุกลุ่มสาระฯ/งาน");
       return;
     }
 
@@ -82,7 +104,7 @@ export default function BookingForm({ userEmail, onLoginClick, onSubmitBooking, 
     try {
       const success = await onSubmitBooking({
         fullName,
-        department,
+        department: finalDepartment,
         startDate,
         endDate,
         startTime,
@@ -96,7 +118,8 @@ export default function BookingForm({ userEmail, onLoginClick, onSubmitBooking, 
         setSuccessMsg("ส่งคำขอจองใช้บริการสำเร็จ! รอการตรวจสอบและอนุมัติจากผู้ดูแลระบบ");
         // Reset state
         setFullName("");
-        setDepartment("");
+        setSelectedDept("");
+        setCustomDept("");
         setPurpose("");
         setAttendeesCount(1);
       } else {
@@ -155,8 +178,8 @@ export default function BookingForm({ userEmail, onLoginClick, onSubmitBooking, 
               กลุ่มสาระฯ / งาน <span className="text-rose-500">*</span>
             </label>
             <select
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
+              value={selectedDept}
+              onChange={(e) => setSelectedDept(e.target.value)}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary text-sm transition cursor-pointer appearance-none"
               required
             >
@@ -167,6 +190,19 @@ export default function BookingForm({ userEmail, onLoginClick, onSubmitBooking, 
                 </option>
               ))}
             </select>
+
+            {selectedDept === "อื่น ๆ (โปรดระบุ)" && (
+              <div className="mt-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                <input
+                  type="text"
+                  value={customDept}
+                  onChange={(e) => setCustomDept(e.target.value)}
+                  placeholder="โปรดระบุกลุ่มสาระฯ / งานของคุณ"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary text-sm transition"
+                  required
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -246,8 +282,9 @@ export default function BookingForm({ userEmail, onLoginClick, onSubmitBooking, 
             เลือกสถานที่ / ห้องบริการ <span className="text-rose-500">*</span>
           </label>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {ROOMS.map((room) => {
+            {displayRooms.map((room) => {
               const isSelected = selectedRoom === room.name;
+              const hasImage = !!room.imageUrl;
               return (
                 <div
                   key={room.id}
@@ -259,12 +296,33 @@ export default function BookingForm({ userEmail, onLoginClick, onSubmitBooking, 
                       : "border-slate-100 bg-white hover:border-slate-200 hover:shadow-xs"
                   }`}
                 >
-                  <div>
-                    <div className={`p-3 rounded-xl w-fit ${isSelected ? "bg-brand-primary text-white" : "bg-slate-100 text-slate-600"}`}>
-                      {getRoomIcon(room.icon)}
+                  <div className="space-y-3">
+                    {hasImage && (
+                      <div className="relative w-full h-32 rounded-xl overflow-hidden bg-slate-100 border border-slate-150">
+                        <img
+                          src={getRoomImageSrc(room.imageUrl)}
+                          alt={room.name}
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            // Hide image on load failure and show icon
+                            e.currentTarget.style.display = "none";
+                            const placeholder = e.currentTarget.nextElementSibling as HTMLElement;
+                            if (placeholder) placeholder.classList.remove("hidden");
+                          }}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-slate-100 flex items-center justify-center hidden">
+                          <ImageIcon className="w-8 h-8 text-slate-400" />
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className={`p-3 rounded-xl w-fit ${isSelected ? "bg-brand-primary text-white" : "bg-slate-100 text-slate-600"} ${hasImage ? "hidden" : "block"}`}>
+                      {getRoomIcon(room.icon || "BookOpen")}
                     </div>
-                    <h5 className="font-bold text-base text-brand-dark mt-4 font-sans">{room.name}</h5>
-                    <p className="text-xs text-brand-neutral mt-1">{room.equipment}</p>
+                    
+                    <h5 className="font-bold text-base text-brand-dark font-sans leading-snug">{room.name}</h5>
+                    <p className="text-xs text-brand-neutral leading-relaxed">{room.equipment}</p>
                   </div>
                   <div className="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between text-xs font-semibold text-slate-500">
                     <span>ความจุสูงสุด:</span>

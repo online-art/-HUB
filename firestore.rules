@@ -74,6 +74,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Rooms collection
+    match /rooms/{roomId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // Sub-admins collection path matches
     match /sub_admins/{email} {
       // Anyone can read the sub-admins list

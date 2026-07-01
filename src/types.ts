@@ -14,6 +14,19 @@ export interface Booking {
   createdAt: string;
 }
 
+export interface Room {
+  id: string;
+  name: string;
+  capacity: string;
+  equipment: string;
+  color?: string;
+  textColor?: string;
+  borderColor?: string;
+  bgLight?: string;
+  icon?: string;
+  imageUrl?: string;
+}
+
 export const DEPARTMENTS = [
   "กลุ่มสาระฯ ภาษาไทย",
   "กลุ่มสาระฯ คณิตศาสตร์",
@@ -25,10 +38,11 @@ export const DEPARTMENTS = [
   "กลุ่มสาระฯ ภาษาต่างประเทศ",
   "กิจกรรมพัฒนาผู้เรียน",
   "ฝ่ายบริหาร/งานอื่น ๆ",
-  "นักเรียน/สภานักเรียน"
+  "นักเรียน/สภานักเรียน",
+  "อื่น ๆ (โปรดระบุ)"
 ];
 
-export const ROOMS = [
+export const ROOMS: Room[] = [
   {
     id: "resource_center",
     name: "ห้อง Resource Center",

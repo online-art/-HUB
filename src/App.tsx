@@ -6,7 +6,7 @@ import AdminDashboard from "./components/AdminDashboard";
 import Regulations from "./components/Regulations";
 import ContactUs from "./components/ContactUs";
 import AuthModal from "./components/AuthModal";
-import { Booking } from "./types";
+import { Booking, Room, ROOMS } from "./types";
 
 // Firebase imports
 import { collection, onSnapshot, doc, addDoc, updateDoc, deleteDoc, setDoc, query, orderBy } from "firebase/firestore";
@@ -26,6 +26,7 @@ export default function App() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string>("");
   const [subAdmins, setSubAdmins] = useState<string[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
 
   // Listen for Auth changes
   useEffect(() => {
@@ -118,6 +119,40 @@ export default function App() {
       setSubAdmins(emails);
     }, (error) => {
       console.error("Firestore sub_admins listening error: ", error);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Listen for real-time Firestore rooms
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "rooms"), (snapshot) => {
+      const fetchedRooms: Room[] = [];
+      snapshot.forEach((docSnap) => {
+        fetchedRooms.push({
+          id: docSnap.id,
+          ...docSnap.data()
+        } as Room);
+      });
+      
+      if (fetchedRooms.length > 0) {
+        setRooms(fetchedRooms);
+      } else {
+        // Seed database with default rooms from ROOMS config
+        ROOMS.forEach(async (room) => {
+          await setDoc(doc(db, "rooms", room.id), {
+            name: room.name,
+            capacity: room.capacity,
+            equipment: room.equipment,
+            color: room.color,
+            textColor: room.textColor,
+            borderColor: room.borderColor,
+            bgLight: room.bgLight,
+            icon: room.icon
+          });
+        });
+      }
+    }, (error) => {
+      console.error("Firestore rooms listening error: ", error);
     });
     return () => unsubscribe();
   }, []);
@@ -387,6 +422,39 @@ export default function App() {
     }
   };
 
+  // Room Management Actions
+  const handleAddRoom = async (roomData: Omit<Room, "id">) => {
+    try {
+      const newRoomRef = doc(collection(db, "rooms"));
+      await setDoc(newRoomRef, {
+        ...roomData
+      });
+    } catch (err) {
+      console.error("Error adding room:", err);
+      throw new Error("ไม่สามารถเพิ่มห้องประชุมได้: " + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
+  const handleUpdateRoom = async (id: string, roomData: Omit<Room, "id">) => {
+    try {
+      await updateDoc(doc(db, "rooms", id), {
+        ...roomData
+      });
+    } catch (err) {
+      console.error("Error updating room:", err);
+      throw new Error("ไม่สามารถแก้ไขข้อมูลห้องประชุมได้: " + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
+  const handleDeleteRoom = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, "rooms", id));
+    } catch (err) {
+      console.error("Error deleting room:", err);
+      alert("ไม่สามารถลบห้องประชุมได้: " + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
   // Navigate & Scroll utils
   const scrollToSection = (id: string) => {
     setCurrentTab("home");
@@ -484,6 +552,7 @@ export default function App() {
             <div id="calendar-view" className="scroll-mt-24">
               <CalendarView
                 bookings={bookings}
+                rooms={rooms}
                 selectedDate={selectedCalendarDate}
                 onDateSelect={(date) => {
                   setSelectedCalendarDate(date);
@@ -500,6 +569,7 @@ export default function App() {
             <div id="booking-form-section" className="scroll-mt-24">
               <BookingForm
                 userEmail={userEmail}
+                rooms={rooms}
                 onLoginClick={() => setIsAuthModalOpen(true)}
                 onSubmitBooking={handleSubmitBooking}
                 selectedCalendarDate={selectedCalendarDate}
@@ -512,6 +582,7 @@ export default function App() {
           <div className="animate-in fade-in duration-300">
             <CalendarView
               bookings={bookings}
+              rooms={rooms}
               selectedDate={selectedCalendarDate}
               onDateSelect={(date) => {
                 setSelectedCalendarDate(date);
@@ -553,6 +624,7 @@ export default function App() {
 
             <AdminDashboard
               bookings={bookings}
+              rooms={rooms}
               onApprove={handleApproveBooking}
               onReject={handleRejectBooking}
               onDelete={handleDeleteBooking}
@@ -562,6 +634,9 @@ export default function App() {
               subAdmins={subAdmins}
               onAddSubAdmin={handleAddSubAdmin}
               onRemoveSubAdmin={handleRemoveSubAdmin}
+              onAddRoom={handleAddRoom}
+              onUpdateRoom={handleUpdateRoom}
+              onDeleteRoom={handleDeleteRoom}
             />
           </div>
         )}
