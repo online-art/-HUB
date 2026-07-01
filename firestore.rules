@@ -1,0 +1,86 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Catch-all default deny for any undefined collection or path
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper to validate the exact structure and types of a booking document
+    function isValidBooking(data) {
+      return data.keys().hasAll([
+        'fullName', 'department', 'startDate', 'endDate', 
+        'startTime', 'endTime', 'room', 'purpose', 
+        'attendeesCount', 'status', 'userEmail', 'createdAt'
+      ]) 
+      && data.keys().size() == 12
+      && data.fullName is string && data.fullName.size() > 0 && data.fullName.size() <= 200
+      && data.department is string && data.department.size() > 0 && data.department.size() <= 200
+      && data.startDate is string && data.startDate.size() == 10
+      && data.endDate is string && data.endDate.size() == 10
+      && data.startTime is string && data.startTime.size() == 5
+      && data.endTime is string && data.endTime.size() == 5
+      && data.room is string && data.room.size() > 0 && data.room.size() <= 200
+      && data.purpose is string && data.purpose.size() > 0 && data.purpose.size() <= 1000
+      && data.attendeesCount is int && data.attendeesCount > 0 && data.attendeesCount <= 300
+      && data.status is string && (data.status == 'pending' || data.status == 'approved' || data.status == 'rejected')
+      && data.userEmail is string && data.userEmail.size() > 0 && data.userEmail.size() <= 100
+      && data.createdAt is string && data.createdAt.size() <= 50;
+    }
+
+    // Helpers to check authentication and admin status
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() 
+        && request.auth.token.email.lower() == 'aek-apisit@pwk.ac.th';
+    }
+
+    function isSubAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/sub_admins/$(request.auth.token.email.lower()));
+    }
+
+    function isAdmin() {
+      return isSuperAdmin() || isSubAdmin();
+    }
+
+    // Booking resource path matches
+    match /bookings/{bookingId} {
+      // Anyone (including guests) can read (get or list) the bookings so that they are visible on the school calendar
+      allow read: if true;
+
+      // Creating a booking requires the submitted payload to exactly match our strict validation schema.
+      // If the creator is not an admin, they can only create a pending booking and the email must match their auth email (or "guest@pwk.ac.th" if guest).
+      allow create: if isValidBooking(request.resource.data)
+        && (isAdmin() || (
+          request.resource.data.status == 'pending'
+          && (
+            (isSignedIn() && request.resource.data.userEmail == request.auth.token.email.lower())
+            || (!isSignedIn() && request.resource.data.userEmail == 'guest@pwk.ac.th')
+          )
+        ));
+
+      // Updating a booking requires being an admin
+      allow update: if isAdmin()
+        && isValidBooking(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.userEmail == resource.data.userEmail;
+
+      // Only admins can delete bookings
+      allow delete: if isAdmin();
+    }
+
+    // Sub-admins collection path matches
+    match /sub_admins/{email} {
+      // Anyone can read the sub-admins list
+      allow read: if true;
+
+      // Only Super Admin can write (add/remove sub-admins)
+      allow write: if isSuperAdmin();
+    }
+  }
+}

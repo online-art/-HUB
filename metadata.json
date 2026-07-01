@@ -1,0 +1,6 @@
+{
+  "name": "HUB Prasat Wittayakarn School",
+  "description": "ระบบจองใช้บริการ HUB โรงเรียนประสาทวิทยาคาร",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

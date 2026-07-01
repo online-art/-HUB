@@ -1,0 +1,83 @@
+{
+  "entities": {
+    "Booking": {
+      "title": "Booking",
+      "description": "A room booking request in the Digital Learning Space HUB",
+      "type": "object",
+      "properties": {
+        "fullName": {
+          "type": "string",
+          "description": "Full name of the reserving person"
+        },
+        "department": {
+          "type": "string",
+          "description": "Department or group of the reserving person"
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Start date of the booking (YYYY-MM-DD)"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "date",
+          "description": "End date of the booking (YYYY-MM-DD)"
+        },
+        "startTime": {
+          "type": "string",
+          "description": "Start time of the booking (HH:MM)"
+        },
+        "endTime": {
+          "type": "string",
+          "description": "End time of the booking (HH:MM)"
+        },
+        "room": {
+          "type": "string",
+          "description": "Name of the room being booked"
+        },
+        "purpose": {
+          "type": "string",
+          "description": "Purpose of the booking"
+        },
+        "attendeesCount": {
+          "type": "integer",
+          "description": "Number of expected attendees"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "approved", "rejected"],
+          "description": "Current status of the booking request"
+        },
+        "userEmail": {
+          "type": "string",
+          "format": "email",
+          "description": "Email address of the user who made the booking"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp when the booking was created"
+        }
+      },
+      "required": [
+        "fullName",
+        "department",
+        "startDate",
+        "endDate",
+        "startTime",
+        "endTime",
+        "room",
+        "purpose",
+        "attendeesCount",
+        "status",
+        "userEmail",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "Collection of all booking requests"
+    }
+  }
+}
