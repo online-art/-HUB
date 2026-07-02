@@ -260,6 +260,30 @@ export default function App() {
       };
 
       await addDoc(collection(db, path), newBooking);
+
+      // Trigger Line Notification via proxy API
+      try {
+        await fetch("/api/notify-line", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            fullName: bookingData.fullName,
+            department: bookingData.department,
+            room: bookingData.room,
+            startDate: bookingData.startDate,
+            endDate: bookingData.endDate,
+            startTime: bookingData.startTime,
+            endTime: bookingData.endTime,
+            purpose: bookingData.purpose,
+            attendeesCount: bookingData.attendeesCount
+          })
+        });
+      } catch (lineError) {
+        console.error("Failed to send LINE notification:", lineError);
+      }
+
       return true;
     } catch (err) {
       if (err instanceof Error && err.message.startsWith("ไม่สามารถจองได้!")) {
